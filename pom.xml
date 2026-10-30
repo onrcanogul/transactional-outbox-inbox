@@ -29,6 +29,7 @@
     <module>test-support</module>
     <module>naive-dual-write</module>
     <module>outbox-polling</module>
+    <module>inbox-consumer</module>
   </modules>
 
   <dependencyManagement>
