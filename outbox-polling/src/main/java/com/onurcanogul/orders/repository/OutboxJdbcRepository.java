@@ -4,6 +4,8 @@ import com.onurcanogul.orders.relay.PendingEvent;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
 
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.List;
 
 /**
@@ -57,6 +59,26 @@ public class OutboxJdbcRepository {
                         """)
                 .param("ids", ids)
                 .param("maxAttempts", maxAttempts)
+                .update();
+    }
+
+    /**
+     * Deletes one batch of published rows older than the cutoff. Callers loop
+     * until fewer rows than the batch size come back so a large backlog never
+     * turns into one long-running delete.
+     */
+    public int deletePublishedBefore(Instant cutoff, int batchSize) {
+        return jdbcClient.sql("""
+                        DELETE FROM outbox
+                        WHERE id IN (
+                            SELECT id FROM outbox
+                            WHERE published_at IS NOT NULL AND published_at < :cutoff
+                            ORDER BY id
+                            LIMIT :batchSize
+                        )
+                        """)
+                .param("cutoff", Timestamp.from(cutoff))
+                .param("batchSize", batchSize)
                 .update();
     }
 

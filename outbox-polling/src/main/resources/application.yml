@@ -32,6 +32,12 @@ outbox:
       Order: orders
   metrics:
     refresh-interval: 5s
+  cleanup:
+    enabled: true
+    retention: 7d
+    batch-size: 1000
+    interval: 1h
+    initial-delay: 5m
 
 server:
   port: 8080
