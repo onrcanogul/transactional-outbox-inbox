@@ -1,0 +1,48 @@
+spring:
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  kafka:
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      properties:
+        enable.idempotence: true
+    consumer:
+      group-id: billing
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      ack-mode: record
+
+server:
+  port: 0
+
+outbox:
+  relay:
+    enabled: true
+    poll-interval: 200ms
+    batch-size: 100
+    send-timeout: 5s
+    leader-lock-key: 7431001
+    max-attempts: 10
+    topics:
+      Order: orders
+  metrics:
+    refresh-interval: 1h
+  cleanup:
+    enabled: false
+
+billing:
+  orders-topic: orders
+  inbox:
+    cleanup:
+      enabled: false
+
+logging:
+  level:
+    org.apache.kafka: warn

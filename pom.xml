@@ -30,6 +30,7 @@
     <module>naive-dual-write</module>
     <module>outbox-polling</module>
     <module>inbox-consumer</module>
+    <module>chaos-tests</module>
   </modules>
 
   <dependencyManagement>
