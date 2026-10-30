@@ -6,6 +6,7 @@ import com.onurcanogul.billing.entity.Invoice;
 import com.onurcanogul.billing.entity.InvoiceStatus;
 import com.onurcanogul.billing.repository.InboxJdbcRepository;
 import com.onurcanogul.billing.repository.InvoiceRepository;
+import com.onurcanogul.billing.repository.OrderVersionJdbcRepository;
 import com.onurcanogul.contracts.orders.EventHeaders;
 import com.onurcanogul.contracts.orders.OrderCancelledEvent;
 import com.onurcanogul.contracts.orders.OrderPlacedEvent;
@@ -37,6 +38,9 @@ class OrderEventListenerTest extends PostgresKafkaTest {
 
     @Autowired
     InboxJdbcRepository inboxJdbcRepository;
+
+    @Autowired
+    OrderVersionJdbcRepository orderVersionJdbcRepository;
 
     @Autowired
     ObjectMapper objectMapper;
@@ -92,6 +96,19 @@ class OrderEventListenerTest extends PostgresKafkaTest {
                 assertThat(invoiceRepository.findAll())
                         .filteredOn(invoice -> invoice.getOrderId().equals(orderId))
                         .hasSize(1));
+    }
+
+    @Test
+    void placedEventArrivingAfterTheCancellationIsIgnored() {
+        UUID orderId = UUID.randomUUID();
+
+        publish(UUID.randomUUID(), OrderCancelledEvent.of(orderId, "cancelled before billing saw it", 2));
+        publish(UUID.randomUUID(), OrderPlacedEvent.of(orderId, UUID.randomUUID(), new BigDecimal("15.00"), 1));
+
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() ->
+                assertThat(orderVersionJdbcRepository.currentVersion(orderId)).isEqualTo(2));
+        await().during(Duration.ofSeconds(2)).atMost(Duration.ofSeconds(5)).untilAsserted(() ->
+                assertThat(invoiceRepository.findByOrderId(orderId)).isEmpty());
     }
 
     private Invoice awaitInvoice(UUID orderId) {
