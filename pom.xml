@@ -24,6 +24,13 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 
+  <modules>
+    <module>event-contracts</module>
+    <module>test-support</module>
+    <module>naive-dual-write</module>
+    <module>outbox-polling</module>
+  </modules>
+
   <dependencyManagement>
     <dependencies>
       <dependency>
