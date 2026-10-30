@@ -3,6 +3,8 @@ package com.onurcanogul.billing.repository;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.UUID;
 
 @Repository
@@ -30,5 +32,19 @@ public class InboxJdbcRepository {
                 .param("eventId", eventId)
                 .query(Long.class)
                 .single() > 0;
+    }
+
+    public int deleteProcessedBefore(Instant cutoff, int batchSize) {
+        return jdbcClient.sql("""
+                        DELETE FROM inbox
+                        WHERE event_id IN (
+                            SELECT event_id FROM inbox
+                            WHERE processed_at < :cutoff
+                            LIMIT :batchSize
+                        )
+                        """)
+                .param("cutoff", Timestamp.from(cutoff))
+                .param("batchSize", batchSize)
+                .update();
     }
 }

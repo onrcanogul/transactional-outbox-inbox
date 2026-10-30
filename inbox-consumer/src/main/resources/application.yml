@@ -26,3 +26,10 @@ spring:
 
 billing:
   orders-topic: orders
+  inbox:
+    cleanup:
+      enabled: true
+      retention: 14d
+      batch-size: 1000
+      interval: 1h
+      initial-delay: 5m
