@@ -12,6 +12,7 @@ public record OutboxRelayProperties(
         int batchSize,
         Duration sendTimeout,
         long leaderLockKey,
+        int maxAttempts,
         Map<String, String> topics) {
 
     public OutboxRelayProperties {
@@ -23,6 +24,9 @@ public record OutboxRelayProperties(
         }
         if (sendTimeout == null) {
             sendTimeout = Duration.ofSeconds(10);
+        }
+        if (maxAttempts <= 0) {
+            maxAttempts = 10;
         }
         if (leaderLockKey == 0) {
             leaderLockKey = 7_431_001L;

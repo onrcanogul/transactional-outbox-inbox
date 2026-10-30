@@ -28,7 +28,7 @@ public class OutboxJdbcRepository {
                         SELECT id, event_id, aggregate_type, aggregate_id, event_type,
                                payload::text AS payload, attempts
                         FROM outbox
-                        WHERE published_at IS NULL
+                        WHERE published_at IS NULL AND failed_at IS NULL
                         ORDER BY id
                         LIMIT :limit
                         FOR UPDATE SKIP LOCKED
@@ -41,6 +41,22 @@ public class OutboxJdbcRepository {
     public void markPublished(List<Long> ids) {
         jdbcClient.sql("UPDATE outbox SET published_at = now() WHERE id IN (:ids)")
                 .param("ids", ids)
+                .update();
+    }
+
+    /**
+     * Counts one more failed attempt and parks the row as failed once the
+     * limit is reached so a poison event stops blocking the relay.
+     */
+    public void recordFailedAttempt(List<Long> ids, int maxAttempts) {
+        jdbcClient.sql("""
+                        UPDATE outbox
+                        SET attempts = attempts + 1,
+                            failed_at = CASE WHEN attempts + 1 >= :maxAttempts THEN now() END
+                        WHERE id IN (:ids)
+                        """)
+                .param("ids", ids)
+                .param("maxAttempts", maxAttempts)
                 .update();
     }
 }

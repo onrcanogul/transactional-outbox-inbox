@@ -42,6 +42,9 @@ public class OutboxEvent {
     @Column(name = "published_at")
     private Instant publishedAt;
 
+    @Column(name = "failed_at")
+    private Instant failedAt;
+
     @Column(nullable = false)
     private int attempts;
 
@@ -91,6 +94,10 @@ public class OutboxEvent {
 
     public Instant getPublishedAt() {
         return publishedAt;
+    }
+
+    public Instant getFailedAt() {
+        return failedAt;
     }
 
     public int getAttempts() {

@@ -12,15 +12,22 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
 
 /**
  * Moves pending outbox rows to Kafka. A batch is locked, sent, acknowledged by
  * the broker and only then marked as published, all inside one transaction.
- * Any failure rolls the transaction back and the same rows are picked up again
- * on the next run, which is what makes delivery at-least-once.
+ * Rows the broker did not acknowledge stay pending with one more attempt
+ * counted; a crash before the update leaves them untouched. Either way the
+ * same rows are picked up again on the next run, which is what makes delivery
+ * at-least-once.
  */
 @Component
 public class OutboxRelay {
@@ -52,19 +59,49 @@ public class OutboxRelay {
                 return 0;
             }
 
-            CompletableFuture<?>[] sends = batch.stream()
-                    .map(event -> kafkaTemplate.send(toRecord(event)))
-                    .toArray(CompletableFuture[]::new);
+            Map<Long, CompletableFuture<?>> sends = new LinkedHashMap<>();
+            for (PendingEvent event : batch) {
+                sends.put(event.id(), send(event));
+            }
+            awaitAcks(sends.values());
 
-            CompletableFuture.allOf(sends)
-                    .orTimeout(properties.sendTimeout().toMillis(), TimeUnit.MILLISECONDS)
-                    .join();
+            List<Long> acknowledged = new ArrayList<>();
+            List<Long> unacknowledged = new ArrayList<>();
+            sends.forEach((id, send) -> (isAcknowledged(send) ? acknowledged : unacknowledged).add(id));
 
-            outboxJdbcRepository.markPublished(batch.stream().map(PendingEvent::id).toList());
-            log.debug("Published {} outbox events", batch.size());
-            return batch.size();
+            if (!unacknowledged.isEmpty()) {
+                outboxJdbcRepository.recordFailedAttempt(unacknowledged, properties.maxAttempts());
+                log.warn("Broker did not acknowledge {} outbox events, they will be retried", unacknowledged.size());
+            }
+            if (!acknowledged.isEmpty()) {
+                outboxJdbcRepository.markPublished(acknowledged);
+                log.debug("Published {} outbox events", acknowledged.size());
+            }
+            return acknowledged.size();
         });
         return published == null ? 0 : published;
+    }
+
+    private CompletableFuture<?> send(PendingEvent event) {
+        try {
+            return kafkaTemplate.send(toRecord(event));
+        } catch (RuntimeException e) {
+            return CompletableFuture.failedFuture(e);
+        }
+    }
+
+    private void awaitAcks(Collection<CompletableFuture<?>> sends) {
+        try {
+            CompletableFuture.allOf(sends.toArray(CompletableFuture[]::new))
+                    .orTimeout(properties.sendTimeout().toMillis(), TimeUnit.MILLISECONDS)
+                    .join();
+        } catch (CompletionException e) {
+            log.debug("At least one send in the batch failed", e);
+        }
+    }
+
+    private static boolean isAcknowledged(CompletableFuture<?> send) {
+        return send.isDone() && !send.isCompletedExceptionally();
     }
 
     private ProducerRecord<String, String> toRecord(PendingEvent event) {

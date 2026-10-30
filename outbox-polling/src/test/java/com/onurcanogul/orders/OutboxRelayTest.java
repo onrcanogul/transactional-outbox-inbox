@@ -30,7 +30,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest(properties = {
         "outbox.relay.enabled=false",
@@ -82,12 +81,13 @@ class OutboxRelayTest extends PostgresKafkaTest {
         var docker = DockerClientFactory.instance().client();
         docker.pauseContainerCmd(KAFKA.getContainerId()).exec();
         try {
-            assertThatThrownBy(() -> outboxRelay.relayBatch()).isInstanceOf(RuntimeException.class);
+            assertThat(outboxRelay.relayBatch()).isZero();
         } finally {
             docker.unpauseContainerCmd(KAFKA.getContainerId()).exec();
         }
 
         assertThat(pendingFor(order)).hasSize(1);
+        assertThat(pendingFor(order).getFirst().getAttempts()).isEqualTo(1);
 
         drainOutbox();
 

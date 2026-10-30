@@ -27,6 +27,7 @@ outbox:
     batch-size: 100
     send-timeout: 10s
     leader-lock-key: 7431001
+    max-attempts: 10
     topics:
       Order: orders
 
