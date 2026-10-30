@@ -26,6 +26,7 @@ outbox:
     poll-interval: 200ms
     batch-size: 100
     send-timeout: 10s
+    leader-lock-key: 7431001
     topics:
       Order: orders
 

@@ -11,6 +11,7 @@ public record OutboxRelayProperties(
         Duration pollInterval,
         int batchSize,
         Duration sendTimeout,
+        long leaderLockKey,
         Map<String, String> topics) {
 
     public OutboxRelayProperties {
@@ -22,6 +23,9 @@ public record OutboxRelayProperties(
         }
         if (sendTimeout == null) {
             sendTimeout = Duration.ofSeconds(10);
+        }
+        if (leaderLockKey == 0) {
+            leaderLockKey = 7_431_001L;
         }
         if (topics == null) {
             topics = Map.of();
