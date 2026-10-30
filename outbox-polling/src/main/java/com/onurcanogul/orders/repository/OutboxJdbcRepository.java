@@ -59,4 +59,19 @@ public class OutboxJdbcRepository {
                 .param("maxAttempts", maxAttempts)
                 .update();
     }
+
+    public OutboxStats stats() {
+        return jdbcClient.sql("""
+                        SELECT count(*) FILTER (WHERE published_at IS NULL AND failed_at IS NULL)        AS pending,
+                               count(*) FILTER (WHERE failed_at IS NOT NULL)                              AS failed,
+                               coalesce(extract(epoch FROM now() - min(created_at)
+                                   FILTER (WHERE published_at IS NULL AND failed_at IS NULL)), 0)::bigint AS lag_seconds
+                        FROM outbox
+                        """)
+                .query(OutboxStats.class)
+                .single();
+    }
+
+    public record OutboxStats(long pending, long failed, long lagSeconds) {
+    }
 }

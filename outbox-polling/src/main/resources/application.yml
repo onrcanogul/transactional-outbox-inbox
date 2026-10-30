@@ -30,6 +30,8 @@ outbox:
     max-attempts: 10
     topics:
       Order: orders
+  metrics:
+    refresh-interval: 5s
 
 server:
   port: 8080
