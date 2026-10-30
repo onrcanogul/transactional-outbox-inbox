@@ -20,6 +20,15 @@ spring:
       properties:
         enable.idempotence: true
 
+outbox:
+  relay:
+    enabled: true
+    poll-interval: 200ms
+    batch-size: 100
+    send-timeout: 10s
+    topics:
+      Order: orders
+
 server:
   port: 8080
 

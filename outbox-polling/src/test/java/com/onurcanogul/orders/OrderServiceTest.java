@@ -23,7 +23,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest
+@SpringBootTest(properties = "outbox.relay.enabled=false")
 class OrderServiceTest extends PostgresKafkaTest {
 
     @Autowired
