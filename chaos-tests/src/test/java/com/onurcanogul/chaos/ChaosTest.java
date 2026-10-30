@@ -6,6 +6,7 @@ import com.onurcanogul.testsupport.Containers;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.test.annotation.DirtiesContext;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.kafka.KafkaContainer;
 
@@ -19,8 +20,11 @@ import java.util.Map;
 /**
  * Both services run in this JVM against one PostgreSQL (two databases) and one
  * Kafka. The service under test is booted by Spring Boot Test so its beans can
- * be spied on; the other side is started by hand.
+ * be spied on; the other side is started by hand. Every context is closed after
+ * its test class: a cached order-service context would keep its relay running
+ * and hold the leader lock, so the relay under test would never get a turn.
  */
+@DirtiesContext
 abstract class ChaosTest {
 
     static final PostgreSQLContainer<?> POSTGRES = Containers.postgres();
